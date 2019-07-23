@@ -2,24 +2,46 @@ package com.founq.sdk.getphoneinfo;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Environment;
+import android.os.StatFs;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
+import android.text.format.Formatter;
+import android.util.DisplayMetrics;
+import android.view.WindowManager;
+
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -151,8 +173,25 @@ public class EquipmentUtil {
      *
      * @return 序列号
      */
-    public static String getSerial() {
-        return Build.SERIAL;
+    public static String getSerial(Context context) {
+        String serial = null;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // 9.0 +
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                    return null;
+                }
+                serial = Build.getSerial();
+            } else if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) { // 8.0 +
+                serial = Build.SERIAL;
+            } else { // 8.0 -
+                Class c = Class.forName("android.os.SystemProperties");
+                Method get = c.getMethod("get", String.class);
+                serial = (String) get.invoke(c, "ro.serialno");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return serial;
     }
 
     /**
@@ -183,7 +222,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机HOST
+     * 获取手机设备主机地址
      *
      * @return HOST
      */
@@ -192,7 +231,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机USER
+     * 获取手机设备用户名
      *
      * @return USER
      */
@@ -201,7 +240,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机TIME
+     * 获取当前时间
      *
      * @return TIME
      */
@@ -249,6 +288,22 @@ public class EquipmentUtil {
         }
     }
 
+    /**
+     * 获取手机androidID
+     *
+     * @param context
+     * @return
+     */
+    public static String getAndroidID(Context context) {
+        String androidID = "";
+        try {
+            androidID = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return androidID;
+    }
+
 
     /**
      * 获取手机IMEI(需要“android.permission.READ_PHONE_STATE”权限)
@@ -259,19 +314,44 @@ public class EquipmentUtil {
         TelephonyManager tm = (TelephonyManager) ctx.getSystemService(Activity.TELEPHONY_SERVICE);
         if (tm != null) {
             if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
                 return null;
             }
             return tm.getDeviceId();
         }
         return null;
     }
+
+    /**
+     * 获取手机IMSI(需要“android.permission.READ_PHONE_STATE”权限)
+     *
+     * @return 手机IMSI
+     */
+    public static String getIMSI(Context ctx) {
+        TelephonyManager tm = (TelephonyManager) ctx.getSystemService(Activity.TELEPHONY_SERVICE);
+        if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+        String IMSI = tm.getSubscriberId();
+        String ProvidersName = "";
+        //460是国家代码，后面是运营商代码
+        if (IMSI != null) {
+            if (IMSI.startsWith("46000") || IMSI.startsWith("46002") || IMSI.startsWith("46007") || IMSI.startsWith("46008")) {
+                ProvidersName = "中国移动";
+            } else if (IMSI.startsWith("46001") || IMSI.startsWith("46006") || IMSI.startsWith("46009")) {
+                ProvidersName = "中国联通";
+            } else if (IMSI.startsWith("46003") || IMSI.startsWith("46005") || IMSI.startsWith("46011")) {
+                ProvidersName = "中国电信";
+            } else if (IMSI.startsWith("46004")) {
+                ProvidersName = "中国卫通";
+            } else if (IMSI.startsWith("46020")) {
+                ProvidersName = "中国铁通";
+            } else {
+                ProvidersName = "其他";
+            }
+        }
+        return "imsi:" + IMSI + ", 运营商:" + ProvidersName;
+    }
+
 
     /**
      * 获取IP地址，需要权限ACCESS_NETWORK_STATE和ACCESS_WIFI_STATE
@@ -314,37 +394,40 @@ public class EquipmentUtil {
                 ((ip >> 16) & 0xFF) + "." +
                 (ip >> 24 & 0xFF);
     }
-//
-//    /**
-//     * 获取蓝牙地址
-//     */
-//    public static String getBluetoothMacAddress() {
-//        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-//        String bluetoothMacAddress = "";
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-//            try {
-//                Field mServiceField = bluetoothAdapter.getClass().getDeclaredField("mService");
-//                mServiceField.setAccessible(true);
-//
-//                Object btManagerService = mServiceField.get(bluetoothAdapter);
-//
-//                if (btManagerService != null) {
-//                    bluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
-//                }
-//            } catch (NoSuchFieldException e) {
-//
-//            } catch (NoSuchMethodException e) {
-//
-//            } catch (IllegalAccessException e) {
-//
-//            } catch (InvocationTargetException e) {
-//
-//            }
-//        } else {
-//            bluetoothMacAddress = bluetoothAdapter.getAddress();
-//        }
-//        return bluetoothMacAddress;
-//    }
+
+    /**
+     * 获取蓝牙地址
+     */
+    public static String getBluetoothMacAddress(Context context) {
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        String bluetoothMacAddress = "";
+        if (bluetoothAdapter == null) {
+            return null;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            try {
+                Field mServiceField = bluetoothAdapter.getClass().getDeclaredField("mService");
+                mServiceField.setAccessible(true);
+
+                Object btManagerService = mServiceField.get(bluetoothAdapter);
+
+                if (btManagerService != null) {
+                    bluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+                }
+            } catch (NoSuchFieldException e) {
+
+            } catch (NoSuchMethodException e) {
+
+            } catch (IllegalAccessException e) {
+
+            } catch (InvocationTargetException e) {
+
+            }
+        } else {
+            bluetoothMacAddress = bluetoothAdapter.getAddress();
+        }
+        return bluetoothMacAddress;
+    }
 
     /**
      * 获取CPU型号
@@ -371,5 +454,140 @@ public class EquipmentUtil {
         } catch (IOException e) {
         }
         return cpuInfo;
+    }
+
+    /**
+     * 获取运行内存信息
+     *
+     * @param context
+     * @return
+     */
+    public static String getRAM(Context context) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(info);
+        return "可用RAM：" + Formatter.formatFileSize(context, info.availMem) + ", 总RAM:"
+                + Formatter.formatFileSize(context, info.totalMem);
+    }
+
+    /**
+     * 获取存储内存
+     *
+     * @return
+     */
+    public static String getROM(Context context) {
+        StatFs statFs = new StatFs(Environment.getDataDirectory().getPath());
+        long totalCounts = statFs.getBlockCountLong();
+        long availableCounts = statFs.getAvailableBlocksLong();
+        long size = statFs.getBlockSizeLong();
+        long availROMSize = availableCounts * size;
+        long totalROMSize = totalCounts * size;
+        return "可用ROM：" + Formatter.formatFileSize(context, availROMSize) + ", 总ROM:"
+                + Formatter.formatFileSize(context, totalROMSize);
+    }
+
+    /**
+     * 获取WiFi名称
+     *
+     * @param context
+     * @return
+     */
+    public static String getWifiName(Context context) {
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInfo;
+        if (wifiManager != null) {
+            wifiInfo = wifiManager.getConnectionInfo();
+            String ssid = wifiInfo.getSSID();
+            int networkId = wifiInfo.getNetworkId();
+            List<WifiConfiguration> configurations = wifiManager.getConfiguredNetworks();
+            if (configurations != null && configurations.size() > 0) {
+                for (WifiConfiguration wifiConfiguration : configurations) {
+                    if (wifiConfiguration.networkId == networkId) {
+                        ssid = wifiConfiguration.SSID;
+                        break;
+                    }
+                }
+            }
+            return ssid;
+        }
+        return null;
+    }
+
+    /**
+     * 获取屏幕宽度
+     *
+     * @param activity
+     * @return
+     */
+    public static int getWidth(Activity activity) {
+        WindowManager manager = activity.getWindowManager();
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        manager.getDefaultDisplay().getMetrics(outMetrics);
+        return outMetrics.widthPixels;
+    }
+
+    /**
+     * 获取屏幕高度
+     *
+     * @param activity
+     * @return
+     */
+    public static int getHeight(Activity activity) {
+        WindowManager manager = activity.getWindowManager();
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        manager.getDefaultDisplay().getMetrics(outMetrics);
+        return outMetrics.heightPixels;
+    }
+
+    /**
+     * 获取屏幕密度
+     *
+     * @param activity
+     * @return
+     */
+    public static float getDensity(Activity activity) {
+        WindowManager manager = activity.getWindowManager();
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        manager.getDefaultDisplay().getMetrics(outMetrics);
+        return outMetrics.density;
+    }
+
+    /**
+     * 方法名：getIpv6Addr(String command)
+     * * 参数：  shell下需要执行的命令，例如： /system/bin/ip -6 addr show
+     * * 功能：  1、获取Ipv6地址，并统计地址的个数
+     *
+     * @return
+     */
+    public static String getIpv6Addr() {
+        String command = "/system/bin/ip -6 addr show "; // 默认获取Ipv6地址的shell命令
+        int IPV6LEN_LEFT_BIT = 6; // 默认，截取的Ipv6字符串左起始位
+        int IPV6LEN_RIGHT_BIT = 1; // 默认，截取的Ipv6字符串右结束位
+        String ipv6addrTemp = "";
+        List<String> ipv6s = new ArrayList<>();
+
+        try {
+            Runtime rt = Runtime.getRuntime();
+            Process p = rt.exec(command);
+            InputStream is = p.getInputStream();
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr);
+            String line = null;
+            while ((line = br.readLine()) != null) {
+                if ((line.contains("inet6")) && (line.contains("scope"))) {
+                    ipv6addrTemp = line.substring(line.indexOf("inet6") + IPV6LEN_LEFT_BIT, line.lastIndexOf("scope") - IPV6LEN_RIGHT_BIT);
+                    ipv6s.add(ipv6addrTemp);
+                }
+            }
+        } catch (IOException e) {
+
+        }
+        String ipv6AddrString = "";
+        if (ipv6s != null && ipv6s.size() > 0) {
+            for (int i = 0; i < ipv6s.size(); i++) {
+                ipv6AddrString = ipv6AddrString + "\n" + i + "、" + ipv6s.get(i);
+            }
+        }
+        return ipv6AddrString;
     }
 }
