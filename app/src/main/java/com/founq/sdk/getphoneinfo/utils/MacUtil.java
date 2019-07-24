@@ -1,4 +1,4 @@
-package com.founq.sdk.getphoneinfo;
+package com.founq.sdk.getphoneinfo.utils;
 
 import android.content.Context;
 import android.net.wifi.WifiInfo;

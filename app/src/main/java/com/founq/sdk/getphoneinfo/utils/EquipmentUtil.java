@@ -1,17 +1,13 @@
-package com.founq.sdk.getphoneinfo;
+package com.founq.sdk.getphoneinfo.utils;
 
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -21,11 +17,10 @@ import android.os.StatFs;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.text.format.Formatter;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
-
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -41,8 +36,10 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Created by ring on 2019/7/22.
@@ -124,7 +121,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取id
+     * 获取id（修订版本列表）
      *
      * @return id
      */
@@ -133,7 +130,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机版本号
+     * 获取手机版本号(显示屏参数)
      *
      * @return 版本号
      */
@@ -195,7 +192,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机设备版本类型
+     * 获取手机设备版本类型(Builder类型)
      *
      * @return 设备版本类型
      */
@@ -213,7 +210,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取手机设备标识
+     * 获取手机设备标识(唯一编号)
      *
      * @return 设备标识
      */
@@ -240,7 +237,7 @@ public class EquipmentUtil {
     }
 
     /**
-     * 获取当前时间
+     * 获取编译时间
      *
      * @return TIME
      */
@@ -291,8 +288,8 @@ public class EquipmentUtil {
     /**
      * 获取手机androidID
      *
-     * @param context
-     * @return
+     * @param context 上下文
+     * @return androidID
      */
     public static String getAndroidID(Context context) {
         String androidID = "";
@@ -356,8 +353,8 @@ public class EquipmentUtil {
     /**
      * 获取IP地址，需要权限ACCESS_NETWORK_STATE和ACCESS_WIFI_STATE
      *
-     * @param context
-     * @return
+     * @param context 上下文
+     * @return ipv4地址
      */
     public static String getIPAddress(Context context) {
         NetworkInfo info = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
@@ -388,7 +385,7 @@ public class EquipmentUtil {
         return null;
     }
 
-    public static String intIP2StringIP(int ip) {
+    private static String intIP2StringIP(int ip) {
         return (ip & 0xFF) + "." +
                 ((ip >> 8) & 0xFF) + "." +
                 ((ip >> 16) & 0xFF) + "." +
@@ -398,7 +395,7 @@ public class EquipmentUtil {
     /**
      * 获取蓝牙地址
      */
-    public static String getBluetoothMacAddress(Context context) {
+    public static String getBluetoothMacAddress() {
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         String bluetoothMacAddress = "";
         if (bluetoothAdapter == null) {
@@ -432,7 +429,7 @@ public class EquipmentUtil {
     /**
      * 获取CPU型号
      *
-     * @return
+     * @return cpu信息
      */
     public static String[] getCpuInfo() {
         String str1 = "/proc/cpuinfo";
@@ -459,8 +456,8 @@ public class EquipmentUtil {
     /**
      * 获取运行内存信息
      *
-     * @param context
-     * @return
+     * @param context 上下文
+     * @return 运行内存信息
      */
     public static String getRAM(Context context) {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -473,7 +470,7 @@ public class EquipmentUtil {
     /**
      * 获取存储内存
      *
-     * @return
+     * @return 存储内存信息
      */
     public static String getROM(Context context) {
         StatFs statFs = new StatFs(Environment.getDataDirectory().getPath());
@@ -489,8 +486,8 @@ public class EquipmentUtil {
     /**
      * 获取WiFi名称
      *
-     * @param context
-     * @return
+     * @param context 上下文
+     * @return wifi名，不是wifi连接返回<unknown ssid>
      */
     public static String getWifiName(Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -516,8 +513,8 @@ public class EquipmentUtil {
     /**
      * 获取屏幕宽度
      *
-     * @param activity
-     * @return
+     * @param activity  上下文，只能是activity
+     * @return 屏幕宽度
      */
     public static int getWidth(Activity activity) {
         WindowManager manager = activity.getWindowManager();
@@ -529,8 +526,8 @@ public class EquipmentUtil {
     /**
      * 获取屏幕高度
      *
-     * @param activity
-     * @return
+     * @param activity  上下文，只能是activity
+     * @return 屏幕高度
      */
     public static int getHeight(Activity activity) {
         WindowManager manager = activity.getWindowManager();
@@ -542,8 +539,8 @@ public class EquipmentUtil {
     /**
      * 获取屏幕密度
      *
-     * @param activity
-     * @return
+     * @param activity  上下文，只能是activity
+     * @return 屏幕密度
      */
     public static float getDensity(Activity activity) {
         WindowManager manager = activity.getWindowManager();
@@ -557,7 +554,7 @@ public class EquipmentUtil {
      * * 参数：  shell下需要执行的命令，例如： /system/bin/ip -6 addr show
      * * 功能：  1、获取Ipv6地址，并统计地址的个数
      *
-     * @return
+     * @return ipv6地址
      */
     public static String getIpv6Addr() {
         String command = "/system/bin/ip -6 addr show "; // 默认获取Ipv6地址的shell命令
@@ -583,11 +580,58 @@ public class EquipmentUtil {
 
         }
         String ipv6AddrString = "";
-        if (ipv6s != null && ipv6s.size() > 0) {
+        if (ipv6s.size() > 0) {
             for (int i = 0; i < ipv6s.size(); i++) {
                 ipv6AddrString = ipv6AddrString + "\n" + i + "、" + ipv6s.get(i);
             }
         }
         return ipv6AddrString;
+    }
+
+    /**
+     * 获取运营商信息
+     * @param context 上下文
+     * @return 运营商信息
+     */
+    public static String getCarrier(Context context) {
+        final Map<String, String> carrierMap = new HashMap<String, String>() {
+            {
+                put("46000", "中国移动");
+                put("46002", "中国移动");
+                put("46007", "中国移动");
+                put("46008", "中国移动");
+
+                put("46001", "中国联通");
+                put("46006", "中国联通");
+                put("46009", "中国联通");
+
+                put("46003", "中国电信");
+                put("46005", "中国电信");
+                put("46011", "中国电信");
+
+                put("46004", "中国卫通");
+
+                put("46020", "中国铁通");
+
+            }
+        };
+
+        try {
+            TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            String simOperator = tm.getSimOperator();
+            if (!TextUtils.isEmpty(simOperator) && carrierMap.containsKey(simOperator)) {
+                return carrierMap.get(simOperator);
+            }
+
+            String simOperatorName = tm.getSimOperatorName();
+            if (!TextUtils.isEmpty(simOperatorName)) {
+                return simOperatorName;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+
     }
 }

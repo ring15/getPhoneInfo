@@ -13,6 +13,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import com.founq.sdk.getphoneinfo.utils.EquipmentUtil;
+import com.founq.sdk.getphoneinfo.utils.InternetUtil;
+import com.founq.sdk.getphoneinfo.utils.MacUtil;
+
 public class MainActivity extends AppCompatActivity {
 
     private TextView mTextView;
@@ -84,7 +88,8 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i(TAG, "网络状态:" + InternetUtil.getNetworkState(this));
         Log.i(TAG, "IMSI和运营商:" + EquipmentUtil.getIMSI(this));
-        Log.i(TAG, "蓝牙地址:" + EquipmentUtil.getBluetoothMacAddress(this));
+        Log.i(TAG, "运营商:" + EquipmentUtil.getCarrier(this));
+        Log.i(TAG, "蓝牙地址:" + EquipmentUtil.getBluetoothMacAddress());
         Log.i(TAG, "wifi信息:" + EquipmentUtil.getWifiName(this));
         Log.i(TAG, "ipv6:" + EquipmentUtil.getIpv6Addr());
         Log.i(TAG, "设备ID:" + EquipmentUtil.getAndroidID(this));
@@ -113,7 +118,8 @@ public class MainActivity extends AppCompatActivity {
                 "获取存储内存:" + EquipmentUtil.getROM(this) + "\n" +
                 "网络状态:" + InternetUtil.getNetworkState(this) + "\n" +
                 "IMSI和运营商:" + EquipmentUtil.getIMSI(this) + "\n" +
-                "蓝牙地址:" + EquipmentUtil.getBluetoothMacAddress(this) + "\n" +
+                "运营商:" + EquipmentUtil.getCarrier(this) + "\n" +
+                "蓝牙地址:" + EquipmentUtil.getBluetoothMacAddress() + "\n" +
                 "wifi信息:" + EquipmentUtil.getWifiName(this) + "\n" +
                 "ipv6:" + EquipmentUtil.getIpv6Addr() + "\n" +
                 "设备ID:" + EquipmentUtil.getAndroidID(this) + "\n";
