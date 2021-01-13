@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.founq.sdk.getphoneinfo"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -27,5 +27,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
     //Google广告服务
     implementation 'com.google.android.gms:play-services-ads:18.2.0'
-    implementation files('libs/miit_mdid_1.0.10.aar')
+    implementation files('libs/oaid_sdk_1.0.25.aar')
 }

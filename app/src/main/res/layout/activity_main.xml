@@ -15,6 +15,14 @@
         android:text="test"
         android:layout_gravity="center"/>
 
+    <Button
+        android:id="@+id/btn_oaid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onClick"
+        android:text="oaid"
+        android:layout_gravity="center"/>
+
     <ScrollView
         android:id="@+id/scrollView2"
         android:layout_width="match_parent"

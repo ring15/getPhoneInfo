@@ -7,19 +7,21 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bun.miitmdid.core.JLibrary;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.bun.miitmdid.core.MdidSdkHelper;
+import com.bun.miitmdid.interfaces.IIdentifierListener;
+import com.bun.miitmdid.interfaces.IdSupplier;
 import com.founq.sdk.getphoneinfo.utils.EquipmentUtil;
 import com.founq.sdk.getphoneinfo.utils.InternetUtil;
 import com.founq.sdk.getphoneinfo.utils.MacUtil;
-import com.founq.sdk.getphoneinfo.utils.MiitHelper;
 import com.google.android.gms.ads.identifier.AdvertisingIdClient;
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
@@ -29,7 +31,6 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
     private TextView mTextView;
-    private MiitHelper mMiitHelper;
     private String OAID;
 
     @Override
@@ -37,15 +38,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mTextView = findViewById(R.id.textView2);
-        JLibrary.InitEntry(this);
-        mMiitHelper = new MiitHelper(new MiitHelper.AppIdsUpdater() {
-            @Override
-            public void OnIdsAvalid(String ids) {
-                OAID = ids;
-                String TAG = "系统参数：";
-                Log.i(TAG, "OAID:" + OAID );
-            }
-        });
         requestPermission();
     }
 
@@ -59,8 +51,36 @@ public class MainActivity extends AppCompatActivity {
         switch (view.getId()) {
             case R.id.btn_test:
                 task.execute();
-                mMiitHelper.getDeviceIds(this);
                 init();
+                break;
+            case R.id.btn_oaid:
+                MdidSdkHelper.InitSdk(this, true, new IIdentifierListener() {
+                    @Override
+                    public void OnSupport(boolean b, IdSupplier idSupplier) {
+                        final IdSupplier supplier = idSupplier;
+                        if (idSupplier != null && idSupplier.isSupported()) {
+//                            Log.i("MainActivity", "oaid:" + idSupplier.getOAID());
+//                            Log.i("MainActivity", "aaid:" + idSupplier.getAAID());
+//                            Log.i("MainActivity", "vaid:" + idSupplier.getVAID());
+                            OAID = idSupplier.getOAID();
+                            String TAG = "系统参数：";
+                            Log.i(TAG, "OAID:" + OAID);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this, "oaid:" + supplier.getOAID(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this, "oaid:null", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                });
                 break;
         }
     }
@@ -116,10 +136,10 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "ipv6:" + EquipmentUtil.getIpv6Addr());
         Log.i(TAG, "设备ID:" + EquipmentUtil.getAndroidID(this));
         Log.i(TAG, "UserAgent:" + EquipmentUtil.getUserAgent(this));
-        Log.i(TAG, "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN":"未使用VPN"));
+        Log.i(TAG, "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN" : "未使用VPN"));
         Log.i(TAG, "地区（ISM）:" + EquipmentUtil.getLocation(this));
-        Log.i(TAG, "地区（net）:" + EquipmentUtil.getLocationNet(this) );
-        Log.i(TAG, "时区:" + EquipmentUtil.getTimeZone() );
+        Log.i(TAG, "地区（net）:" + EquipmentUtil.getLocationNet(this));
+        Log.i(TAG, "时区:" + EquipmentUtil.getTimeZone());
 
         String message = "系统参数：" + "\n" + "手机厂商：" + EquipmentUtil.getDeviceBrand() + "\n" +
                 "手机型号：" + EquipmentUtil.getSystemModel() + "\n" + "手机当前系统语言：" + EquipmentUtil.getSystemLanguage() +
@@ -150,11 +170,11 @@ public class MainActivity extends AppCompatActivity {
                 "wifi信息:" + EquipmentUtil.getWifiName(this) + "\n" +
                 "ipv6:" + EquipmentUtil.getIpv6Addr() + "\n" +
                 "设备ID:" + EquipmentUtil.getAndroidID(this) + "\n" +
-                "UserAgent:" + EquipmentUtil.getUserAgent(this) + "\n"+
-                "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN":"未使用VPN") + "\n"+
-                "地区（ISM）:" +  EquipmentUtil.getLocation(this) + "\n"+
-                "地区（net）:" + EquipmentUtil.getLocationNet(this) + "\n"+
-                "时区:" + EquipmentUtil.getTimeZone()  + "\n";
+                "UserAgent:" + EquipmentUtil.getUserAgent(this) + "\n" +
+                "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN" : "未使用VPN") + "\n" +
+                "地区（ISM）:" + EquipmentUtil.getLocation(this) + "\n" +
+                "地区（net）:" + EquipmentUtil.getLocationNet(this) + "\n" +
+                "时区:" + EquipmentUtil.getTimeZone() + "\n";
 
         mTextView.setText(message);
         ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -191,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String advertId) {
 //            Toast.makeText(getApplicationContext(), advertId, Toast.LENGTH_SHORT).show();
             String TAG = "系统参数：";
-            Log.i(TAG, "GAID:" + advertId );
+            Log.i(TAG, "GAID:" + advertId);
         }
 
 
