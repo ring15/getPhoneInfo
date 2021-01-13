@@ -5,27 +5,47 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.bun.miitmdid.core.JLibrary;
 import com.founq.sdk.getphoneinfo.utils.EquipmentUtil;
 import com.founq.sdk.getphoneinfo.utils.InternetUtil;
 import com.founq.sdk.getphoneinfo.utils.MacUtil;
+import com.founq.sdk.getphoneinfo.utils.MiitHelper;
+import com.google.android.gms.ads.identifier.AdvertisingIdClient;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
+
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
     private TextView mTextView;
+    private MiitHelper mMiitHelper;
+    private String OAID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mTextView = findViewById(R.id.textView2);
+        JLibrary.InitEntry(this);
+        mMiitHelper = new MiitHelper(new MiitHelper.AppIdsUpdater() {
+            @Override
+            public void OnIdsAvalid(String ids) {
+                OAID = ids;
+                String TAG = "系统参数：";
+                Log.i(TAG, "OAID:" + OAID );
+            }
+        });
         requestPermission();
     }
 
@@ -38,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.btn_test:
+                task.execute();
+                mMiitHelper.getDeviceIds(this);
                 init();
                 break;
         }
@@ -93,6 +115,11 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "wifi信息:" + EquipmentUtil.getWifiName(this));
         Log.i(TAG, "ipv6:" + EquipmentUtil.getIpv6Addr());
         Log.i(TAG, "设备ID:" + EquipmentUtil.getAndroidID(this));
+        Log.i(TAG, "UserAgent:" + EquipmentUtil.getUserAgent(this));
+        Log.i(TAG, "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN":"未使用VPN"));
+        Log.i(TAG, "地区（ISM）:" + EquipmentUtil.getLocation(this));
+        Log.i(TAG, "地区（net）:" + EquipmentUtil.getLocationNet(this) );
+        Log.i(TAG, "时区:" + EquipmentUtil.getTimeZone() );
 
         String message = "系统参数：" + "\n" + "手机厂商：" + EquipmentUtil.getDeviceBrand() + "\n" +
                 "手机型号：" + EquipmentUtil.getSystemModel() + "\n" + "手机当前系统语言：" + EquipmentUtil.getSystemLanguage() +
@@ -122,11 +149,51 @@ public class MainActivity extends AppCompatActivity {
                 "蓝牙地址:" + EquipmentUtil.getBluetoothMacAddress() + "\n" +
                 "wifi信息:" + EquipmentUtil.getWifiName(this) + "\n" +
                 "ipv6:" + EquipmentUtil.getIpv6Addr() + "\n" +
-                "设备ID:" + EquipmentUtil.getAndroidID(this) + "\n";
+                "设备ID:" + EquipmentUtil.getAndroidID(this) + "\n" +
+                "UserAgent:" + EquipmentUtil.getUserAgent(this) + "\n"+
+                "VPN:" + (EquipmentUtil.isVpnUsed() ? "使用VPN":"未使用VPN") + "\n"+
+                "地区（ISM）:" +  EquipmentUtil.getLocation(this) + "\n"+
+                "地区（net）:" + EquipmentUtil.getLocationNet(this) + "\n"+
+                "时区:" + EquipmentUtil.getTimeZone()  + "\n";
 
         mTextView.setText(message);
         ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clipData = ClipData.newPlainText("Label", message);
         clipboardManager.setPrimaryClip(clipData);
     }
+
+    AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
+        @Override
+        protected String doInBackground(Void... params) {
+            AdvertisingIdClient.Info idInfo = null;
+            try {
+                idInfo = AdvertisingIdClient.getAdvertisingIdInfo(getApplicationContext());
+            } catch (GooglePlayServicesNotAvailableException e) {
+                e.printStackTrace();
+            } catch (GooglePlayServicesRepairableException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            String advertId = null;
+            try {
+                advertId = idInfo.getId();
+            } catch (NullPointerException e) {
+                e.printStackTrace();
+            }
+
+
+            return advertId;
+        }
+
+
+        @Override
+        protected void onPostExecute(String advertId) {
+//            Toast.makeText(getApplicationContext(), advertId, Toast.LENGTH_SHORT).show();
+            String TAG = "系统参数：";
+            Log.i(TAG, "GAID:" + advertId );
+        }
+
+
+    };
 }

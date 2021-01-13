@@ -15,12 +15,16 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.StatFs;
 import android.provider.Settings;
-import android.support.v4.app.ActivityCompat;
+import androidx.core.app.ActivityCompat;
 import android.telephony.TelephonyManager;
+import android.text.BidiFormatter;
+import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.text.format.Formatter;
 import android.util.DisplayMetrics;
+import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebSettings;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -34,12 +38,17 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Created by ring on 2019/7/22.
@@ -513,7 +522,7 @@ public class EquipmentUtil {
     /**
      * 获取屏幕宽度
      *
-     * @param activity  上下文，只能是activity
+     * @param activity 上下文，只能是activity
      * @return 屏幕宽度
      */
     public static int getWidth(Activity activity) {
@@ -526,7 +535,7 @@ public class EquipmentUtil {
     /**
      * 获取屏幕高度
      *
-     * @param activity  上下文，只能是activity
+     * @param activity 上下文，只能是activity
      * @return 屏幕高度
      */
     public static int getHeight(Activity activity) {
@@ -539,7 +548,7 @@ public class EquipmentUtil {
     /**
      * 获取屏幕密度
      *
-     * @param activity  上下文，只能是activity
+     * @param activity 上下文，只能是activity
      * @return 屏幕密度
      */
     public static float getDensity(Activity activity) {
@@ -590,6 +599,7 @@ public class EquipmentUtil {
 
     /**
      * 获取运营商信息
+     *
      * @param context 上下文
      * @return 运营商信息
      */
@@ -633,5 +643,86 @@ public class EquipmentUtil {
         }
         return null;
 
+    }
+
+
+    public static String getUserAgent(Context context) {
+        String userAgent = "";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            try {
+                userAgent = WebSettings.getDefaultUserAgent(context);
+            } catch (Exception e) {
+                userAgent = System.getProperty("http.agent");
+            }
+        } else {
+            userAgent = System.getProperty("http.agent");
+        }
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0, length = userAgent.length(); i < length; i++) {
+            char c = userAgent.charAt(i);
+            if (c <= '\u001f' || c >= '\u007f') {
+                sb.append(String.format("\\u%04x", (int) c));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    public static boolean isVpnUsed() {
+        try {
+            Enumeration<NetworkInterface> niList = NetworkInterface.getNetworkInterfaces();
+            if (niList != null) {
+                for (NetworkInterface intf : Collections.list(niList)) {
+                    if (!intf.isUp() || intf.getInterfaceAddresses().size() == 0) {
+                        continue;
+                    }
+                    if ("tun0".equals(intf.getName()) || "ppp0".equals(intf.getName())) {
+                        return true; // The VPN is up
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static String getLocation(Context context) {
+        TelephonyManager manager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        return manager.getSimCountryIso();
+    }
+
+    public static String getLocationNet(Context context) {
+        TelephonyManager manager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        return manager.getNetworkCountryIso();
+    }
+
+    public static String getTimeZone() {
+        Calendar mDummyDate;
+        mDummyDate = Calendar.getInstance();
+        Calendar now = Calendar.getInstance();
+        mDummyDate.setTimeZone(now.getTimeZone());
+        mDummyDate.set(now.get(Calendar.YEAR), 11, 31, 13, 0, 0);
+        return getTimeZoneText(now.getTimeZone(), true);
+    }
+
+    public static String getTimeZoneText(TimeZone tz, boolean includeName) {
+        Date now = new Date();
+
+        SimpleDateFormat gmtFormatter = new SimpleDateFormat("ZZZZ");
+        gmtFormatter.setTimeZone(tz);
+        String gmtString = gmtFormatter.format(now);
+        BidiFormatter bidiFormatter = BidiFormatter.getInstance();
+        Locale l = Locale.getDefault();
+        boolean isRtl = TextUtils.getLayoutDirectionFromLocale(l) == View.LAYOUT_DIRECTION_RTL;
+        gmtString = bidiFormatter.unicodeWrap(gmtString,
+                isRtl ? TextDirectionHeuristics.RTL : TextDirectionHeuristics.LTR);
+
+        if (!includeName) {
+            return gmtString;
+        }
+
+        return gmtString;
     }
 }
